@@ -1,4 +1,68 @@
-# godot
+# godot -- AS : producer patch for dynamic metrics
+
+- [Ext Doc](http://blog.nodejitsu.com/waiting-for-godot)
+
+## Example for cpu client/server
+
+### client.js
+
+```javascript
+var os = require('os');
+var godot = require('godot');
+
+godot.createClient({
+    type: 'udp',
+    producers: [
+        // Producer which send loadavg of cpu 1 each sec
+    	godot.producer({
+	    host: 'app.server.com',
+	    description : 'Main root server',
+	    service: 'cpu',
+	    metric : function() {
+		return os.loadavg()[0] * 100
+	    },
+	    ttl: 1000
+	}),
+	// Producer for heartbeat
+	godot.producer({
+            host: 'app.server.com',
+            service: 'app.server/health/heartbeat',
+            ttl: 1000
+      })
+    ]
+}).connect(1337);
+```
+
+### server.js
+
+```javascript
+var godot = require('godot');
+
+var a = godot.createServer({
+    type: 'udp',
+    reactors: [
+        // Reactor will print to console if cpu1 > 10
+	godot.reactor()
+	    .where('service', 'cpu')
+	    .over(10)
+	    .console(),
+	// Reactor will print if the client is out
+	godot.reactor()
+	    .where('service', '*/health/heartbeat')
+	    .expire(1000)
+	    .console()	
+    ]
+}).listen(1337);
+```
+
+### Notes
+
+- email module use sendgrid
+- original producer file is static
+
+--------------------------
+
+# Official doc
 
 Godot is a streaming real-time event processor based on [Riemann][riemann] written in Node.js
 
@@ -8,6 +72,7 @@ Godot is a streaming real-time event processor based on [Riemann][riemann] writt
   * [Primatives](#primatives)
 * [Producers](#producers)
 * [Tests](#test)
+
 
 ## Usage
 
